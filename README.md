@@ -1,64 +1,124 @@
 # PromptHelper
 
-A powerful web-based tool for crafting detailed and structured prompts for AI image and video generation.
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Vanilla JS](https://img.shields.io/badge/Vanilla-JS-yellow.svg)](http://vanilla-js.com/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 
-## Features
+A powerful web-based tool for crafting detailed and structured prompts for AI image and video generation. PromptHelper streamlines the process of creating comprehensive prompts for various AI art and video generation tools.
 
-### Image Prompt Builder
-- Comprehensive form-based interface for creating detailed image prompts
-- Multiple categories for precise control:
-  - Subject and Action definition
-  - Style and Aesthetics
-  - Composition and Framing
-  - Camera Settings
-  - Lighting Setup
-  - Environment Details
-  - Output Parameters
+## 🚀 Quick Start
 
-### Video Prompt Builder
-- Specialized interface for video generation prompts
-- Key features include:
-  - Duration and FPS settings
-  - Beat sheet with timestamps
-  - Camera motion planning
-  - Performance directions
-  - VFX specifications
-  - Audio cue management
+1. Clone this repository
+2. Open `PromptHelper.html` in your web browser
+3. Start crafting your prompts!
 
-### General Features
-- Interactive contextual help system
-- JSON export/import functionality
-- Copy to clipboard support
-- Keyboard shortcuts
-- Privacy-focused (all data stays local)
+## ✨ Features
 
-## Usage
+### 🎨 Image Prompt Builder
+Create detailed image generation prompts with control over:
+- **Subject Definition**: Main subjects, actions, and expressions
+- **Style & Aesthetics**: Visual style, influences, and color palettes
+- **Technical Settings**: 
+  - Camera parameters (type, lens, exposure)
+  - Lighting setup and atmosphere
+  - Composition and framing
+  - Output specifications
+- **Advanced Options**: Negative prompts and generation parameters
 
-1. Choose between Image or Video prompt builder
-2. Fill in the relevant fields
-3. Use the contextual help in the sidebar for guidance
-4. Click "Compose" or use Ctrl/Cmd + Enter to generate the prompt
-5. Copy the result or save as JSON for later use
+### 🎬 Video Prompt Builder
+Specialized interface for video generation with:
+- **Timeline Control**: Duration, FPS, and beat sheet
+- **Motion Design**: 
+  - Camera movements and transitions
+  - Subject performance direction
+  - VFX and simulation specifications
+- **Audio Integration**: Music, SFX, and VO timing cues
+- **Technical Output**: Format, resolution, and encoding settings
 
-### Keyboard Shortcuts
+### 🛠 Core Features
+- **Interactive Help System**: Context-sensitive guidance for each field
+- **Data Management**: 
+  - JSON export/import for prompt templates
+  - Clipboard integration
+  - Local storage only (privacy-focused)
+- **Efficient Workflow**: 
+  - Keyboard shortcuts
+  - Tab navigation
+  - Real-time preview
+
+## 🎯 Usage Guide
+
+### Getting Started
+1. Select Image or Video mode
+2. Fill in the required fields:
+   - Subject and action (required)
+   - Setting and purpose (recommended)
+3. Add details in optional categories
+4. Generate your prompt
+5. Copy or export the result
+
+### ⌨️ Keyboard Shortcuts
 - `Tab`: Navigate through fields
-- `Ctrl/Cmd + Enter`: Compose prompt
+- `Ctrl/Cmd + Enter`: Generate prompt
+- `Ctrl/Cmd + C`: Copy generated prompt (when focused)
 
-## Privacy
+### 💾 Saving Your Work
+- Export prompts as JSON for later use
+- Import previous prompts to continue editing
+- Copy generated prompts directly to clipboard
 
-All operations are performed client-side. No data leaves your browser.
+## 🔒 Privacy & Security
 
-## Technical Details
+- Zero data collection
+- No external dependencies or APIs
+- All operations performed client-side
+- No cookies or local storage used
 
-- Pure HTML/CSS/JavaScript implementation
-- No external dependencies
-- Responsive design
-- Supports modern browsers
+## 🔧 Technical Details
 
-## Contributing
+### Requirements
+- Modern web browser (Chrome, Firefox, Safari, Edge)
+- JavaScript enabled
+- No internet connection required
 
-Feel free to submit issues and enhancement requests.
+### Implementation
+- Pure HTML5/CSS3/JavaScript
+- Vanilla JS - no frameworks or dependencies
+- Responsive design principles
+- Progressive enhancement
+- Semantic HTML structure
+- Custom CSS variables for theming
 
-## License
+### Browser Support
+- Chrome/Edge (latest 2 versions)
+- Firefox (latest 2 versions)
+- Safari (latest 2 versions)
 
-[Add your chosen license here]
+## 👥 Contributing
+
+Contributions are welcome! Here's how you can help:
+
+1. Fork the repository
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Make your changes
+4. Test thoroughly
+5. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+6. Push to the branch (`git push origin feature/AmazingFeature`)
+7. Open a Pull Request
+
+### Development Guidelines
+- Maintain the vanilla JS approach - no dependencies
+- Follow existing code style
+- Add comments for complex logic
+- Test across different browsers
+- Update documentation as needed
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Inspired by the AI art generation community
+- UI/UX influenced by professional image/video production workflows
+- Special thanks to all contributors and users
