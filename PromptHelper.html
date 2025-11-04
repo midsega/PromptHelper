@@ -1,0 +1,663 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>PromptHelper — Image + Video</title>
+  <style>
+    :root{
+      --bg:#0b0f14; --panel:#10161e; --panel-2:#0e141b; --text:#e6edf3; --muted:#9fb0c0; --accent:#4da3ff; --accent-2:#7cf5ff; --ok:#34d399; --warn:#f59e0b; --err:#ef4444; --border:#1f2a37;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:linear-gradient(180deg,#0a0f14, #0c131a 30%, #0a1118 100%);color:var(--text);font:14px/1.45 system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Arial, "Apple Color Emoji","Segoe UI Emoji"}
+    .wrap{display:grid;grid-template-columns: 320px 1fr;grid-template-rows:auto 1fr auto;gap:12px;padding:16px;max-width:1300px;margin:0 auto;position:relative;z-index:1}
+    header{grid-column:1/-1;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:14px 16px;display:flex;align-items:center;gap:16px}
+    header h1{font-size:18px;margin:0}
+    header .tabs{margin-left:auto;display:flex;gap:8px}
+    .tab{border:1px solid var(--border);background:var(--panel-2);color:var(--text);padding:8px 12px;border-radius:10px;cursor:pointer}
+    .tab[aria-selected="true"]{background:linear-gradient(180deg,#122031,#0f1b29);outline:1px solid var(--accent);box-shadow:0 0 0 2px rgba(77,163,255,.15) inset}
+
+    aside{position:sticky;top:16px;align-self:start;background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:14px 12px;height:fit-content}
+    .sidebar-title{font-weight:600;margin:0 0 6px;font-size:13px;color:var(--accent)}
+    .help{color:var(--muted);font-size:13px;margin:0 0 8px}
+    .tips{display:grid;gap:6px}
+    .tip{background:var(--panel-2);border:1px dashed #223244;padding:10px;border-radius:10px}
+    .tip b{color:#cfe8ff}
+
+    main{display:grid;gap:12px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:16px}
+    .card h2{margin:0 0 8px;font-size:16px}
+    .grid{display:grid;gap:10px}
+    .grid.cols-2{grid-template-columns: repeat(2, minmax(0,1fr))}
+    .grid.cols-3{grid-template-columns: repeat(3, minmax(0,1fr))}
+    label{display:block;font-weight:600;margin:2px 0 6px}
+    .row{display:grid;gap:8px}
+    input[type="text"], textarea, select{width:100%;background:#0c131b;border:1px solid #1a2634;color:var(--text);padding:10px 12px;border-radius:10px;outline:none}
+    input[type="text"]:focus, textarea:focus, select:focus{border-color:#2a76c4;box-shadow:0 0 0 2px rgba(77,163,255,.15)}
+    textarea{min-height:72px;resize:vertical}
+
+    .actions{display:flex;flex-wrap:wrap;gap:8px}
+    button{background:#122439;border:1px solid #1e3857;color:var(--text);padding:10px 12px;border-radius:10px;cursor:pointer}
+    button.primary{background:linear-gradient(180deg,#1a3a5f,#15314f);border-color:#29527e}
+    button.warn{background:#2a2010;border-color:#4d3a16}
+    .badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:6px 8px;border-radius:999px;border:1px solid var(--border);background:var(--panel-2);color:var(--muted)}
+
+    .output{display:grid;gap:8px}
+    .output textarea{min-height:180px}
+    .footer{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;color:var(--muted)}
+
+    .pill{font-size:12px;border:1px solid var(--border);padding:2px 8px;border-radius:999px;color:#c9d8e6;background:#0c141b}
+
+    @media (max-width: 980px){
+      .wrap{grid-template-columns:1fr}
+      aside{order:2}
+      main{order:3}
+    }
+    /* Page background image overlay */
+    body{position:relative}
+    body::before{content:"";position:fixed;inset:0;background:url('khajiit-harpy.png') center/cover no-repeat fixed;opacity:.25;filter:saturate(1.1) contrast(1.05);z-index:0;pointer-events:none}
+
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <header>
+      <div>
+        <h1>PromptHelper</h1>
+        <div class="badge" id="status" aria-live="polite">Ready</div>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Prompt type">
+        <button class="tab" id="tab-image" role="tab" aria-selected="true" aria-controls="panel-image">Image</button>
+        <button class="tab" id="tab-video" role="tab" aria-selected="false" aria-controls="panel-video">Video</button>
+      </div>
+    </header>
+
+    <aside aria-label="Contextual help">
+      <p class="sidebar-title">Field guide</p>
+      <p class="help" id="help-title">Focus a field to see guidance and suggestions.</p>
+      <div class="tips" id="tips"></div>
+    </aside>
+
+    <main>
+      <!-- IMAGE BUILDER -->
+      <section id="panel-image" class="card" role="tabpanel" aria-labelledby="tab-image">
+        <h2>Image Prompt Builder</h2>
+        <div class="grid cols-2">
+          <div class="row">
+            <label for="img-subjects">Subjects</label>
+            <input type="text" id="img-subjects" placeholder="e.g., red fox; 1 subject; mid-leap; alert expression" data-help="subjects" />
+          </div>
+          <div class="row">
+            <label for="img-action">Action</label>
+            <input type="text" id="img-action" placeholder="e.g., leaping over a mossy log" data-help="action" />
+          </div>
+          <div class="row">
+            <label for="img-setting">Setting</label>
+            <input type="text" id="img-setting" placeholder="e.g., temperate rainforest, early morning" data-help="setting" />
+          </div>
+          <div class="row">
+            <label for="img-purpose">Purpose</label>
+            <input type="text" id="img-purpose" placeholder="e.g., poster, concept art, product shot" data-help="purpose" />
+          </div>
+        </div>
+
+        <div class="grid cols-3">
+          <div class="row">
+            <label for="img-aesthetics">Aesthetic tags</label>
+            <input type="text" id="img-aesthetics" placeholder="cinematic, photoreal, painterly, anime" data-help="aesthetics" />
+          </div>
+          <div class="row">
+            <label for="img-influences">Influences</label>
+            <input type="text" id="img-influences" placeholder="named movements; use only if you have rights" data-help="influences" />
+          </div>
+          <div class="row">
+            <label for="img-color">Palette</label>
+            <input type="text" id="img-color" placeholder="deep greens, warm orange accent" data-help="color" />
+          </div>
+          <div class="row">
+            <label for="img-materials">Materials</label>
+            <input type="text" id="img-materials" placeholder="wet fur, moss texture, slick bark" data-help="materials" />
+          </div>
+          <div class="row">
+            <label for="img-framing">Framing / Shot</label>
+            <input type="text" id="img-framing" placeholder="telephoto close-up, macro, isometric" data-help="framing" />
+          </div>
+          <div class="row">
+            <label for="img-guides">Guides</label>
+            <input type="text" id="img-guides" placeholder="rule of thirds, centered symmetry, leading lines" data-help="guides" />
+          </div>
+          <div class="row">
+            <label for="img-focal">Focal point</label>
+            <input type="text" id="img-focal" placeholder="fox eyes tack-sharp" data-help="focal_points" />
+          </div>
+          <div class="row">
+            <label for="img-camera">Camera</label>
+            <input type="text" id="img-camera" placeholder="full-frame DSLR, 200mm" data-help="camera_type" />
+          </div>
+          <div class="row">
+            <label for="img-dof">Depth of field</label>
+            <input type="text" id="img-dof" placeholder="f/2.8 shallow DOF, round bokeh" data-help="depth_of_field" />
+          </div>
+          <div class="row">
+            <label for="img-exposure">Exposure</label>
+            <input type="text" id="img-exposure" placeholder="ISO 800, 1/1000s, fine grain" data-help="exposure" />
+          </div>
+          <div class="row">
+            <label for="img-lighting">Lighting</label>
+            <input type="text" id="img-lighting" placeholder="overcast soft light, backlit rim, 6500K" data-help="lighting" />
+          </div>
+          <div class="row">
+            <label for="img-background">Background</label>
+            <input type="text" id="img-background" placeholder="studio sweep, natural environment, matte painting" data-help="background" />
+          </div>
+          <div class="row">
+            <label for="img-atmo">Atmospherics</label>
+            <input type="text" id="img-atmo" placeholder="mist, rain droplets, fog, dust" data-help="atmospherics" />
+          </div>
+          <div class="row">
+            <label for="img-styling">Styling / Props</label>
+            <input type="text" id="img-styling" placeholder="wardrobe, props, hair/makeup/FX" data-help="styling" />
+          </div>
+          <div class="row">
+            <label for="img-text">On-image text</label>
+            <input type="text" id="img-text" placeholder="title placement, font vibe, safe margins" data-help="typography" />
+          </div>
+          <div class="row">
+            <label for="img-medium">Medium / Engine</label>
+            <input type="text" id="img-medium" placeholder="photo, 3D render (Octane/Blender), watercolor" data-help="medium" />
+          </div>
+          <div class="row">
+            <label for="img-output">Output</label>
+            <input type="text" id="img-output" placeholder="4096×2731, 3:2, PNG" data-help="output" />
+          </div>
+          <div class="row">
+            <label for="img-negative">Negative constraints</label>
+            <input type="text" id="img-negative" placeholder="extra limbs, watermark, text artifacts, NSFW" data-help="negative" />
+          </div>
+          <div class="row">
+            <label for="img-params">Tool params</label>
+            <input type="text" id="img-params" placeholder="--ar 3:2, CFG 6.5, steps 30, seed 1234" data-help="params" />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="img-build">Compose Image Prompt</button>
+          <button id="img-clear">Clear</button>
+          <button id="img-save-json">Save JSON</button>
+          <label class="pill" for="img-load-json" style="cursor:pointer">Load JSON<input type="file" id="img-load-json" accept="application/json" hidden></label>
+        </div>
+
+        <div class="output">
+          <label for="img-result">Composed Prompt</label>
+          <textarea id="img-result" readonly></textarea>
+          <div class="actions">
+            <button class="primary" data-copy="#img-result">Copy</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- VIDEO BUILDER -->
+      <section id="panel-video" class="card" role="tabpanel" aria-labelledby="tab-video" hidden>
+        <h2>Video Prompt Builder</h2>
+        <div class="grid cols-2">
+          <div class="row">
+            <label for="vid-subjects">Subjects</label>
+            <input type="text" id="vid-subjects" placeholder="e.g., lone cyclist" data-help="subjects" />
+          </div>
+          <div class="row">
+            <label for="vid-action">Action / Logline Action</label>
+            <input type="text" id="vid-action" placeholder="e.g., outruns a storm" data-help="action" />
+          </div>
+          <div class="row">
+            <label for="vid-setting">Setting</label>
+            <input type="text" id="vid-setting" placeholder="salt flats, blue hour, storm on horizon" data-help="setting" />
+          </div>
+          <div class="row">
+            <label for="vid-purpose">Purpose</label>
+            <input type="text" id="vid-purpose" placeholder="spec reel, storyboard, ad" data-help="purpose" />
+          </div>
+        </div>
+
+        <div class="grid cols-3">
+          <div class="row">
+            <label for="vid-aesthetics">Visual style</label>
+            <input type="text" id="vid-aesthetics" placeholder="cinematic, editorial, anime" data-help="aesthetics" />
+          </div>
+          <div class="row">
+            <label for="vid-color">Palette</label>
+            <input type="text" id="vid-color" placeholder="desaturated teal-orange, warm rim" data-help="color" />
+          </div>
+          <div class="row">
+            <label for="vid-duration">Duration / FPS</label>
+            <input type="text" id="vid-duration" placeholder="12s at 24fps" data-help="duration_fps" />
+          </div>
+          <div class="row">
+            <label for="vid-beats">Beat sheet (with timestamps)</label>
+            <textarea id="vid-beats" placeholder="00:00–00:03 ...; 00:03–00:06 ..." data-help="shot_breakdown"></textarea>
+          </div>
+          <div class="row">
+            <label for="vid-camera-motion">Camera motion</label>
+            <input type="text" id="vid-camera-motion" placeholder="gimbal track, dolly-in, crane down" data-help="camera_motion" />
+          </div>
+          <div class="row">
+            <label for="vid-lens">Lens / DOF / Shutter</label>
+            <input type="text" id="vid-lens" placeholder="35mm and 85mm, f/2.8, 1/48" data-help="lens" />
+          </div>
+          <div class="row">
+            <label for="vid-lighting">Lighting</label>
+            <input type="text" id="vid-lighting" placeholder="overcast with sunbreak, back rim, 6500K" data-help="lighting" />
+          </div>
+          <div class="row">
+            <label for="vid-performance">Performance / Blocking</label>
+            <input type="text" id="vid-performance" placeholder="hard pedaling, head down, salt spray" data-help="subject_motion" />
+          </div>
+          <div class="row">
+            <label for="vid-vfx">VFX / Sim</label>
+            <input type="text" id="vid-vfx" placeholder="lightning, particles, heat shimmer" data-help="vfx" />
+          </div>
+          <div class="row">
+            <label for="vid-text">On-screen text</label>
+            <input type="text" id="vid-text" placeholder="lower thirds, captions, in/out times" data-help="on_screen_text" />
+          </div>
+          <div class="row">
+            <label for="vid-audio">Audio notes</label>
+            <input type="text" id="vid-audio" placeholder="pulsing synth, thunder hits at 00:04, 00:11" data-help="audio" />
+          </div>
+          <div class="row">
+            <label for="vid-output">Output</label>
+            <input type="text" id="vid-output" placeholder="1920×1080, 16:9, H.264" data-help="output" />
+          </div>
+          <div class="row">
+            <label for="vid-negative">Negative constraints</label>
+            <input type="text" id="vid-negative" placeholder="logos, gore, text artifacts, stretched faces" data-help="negative" />
+          </div>
+          <div class="row">
+            <label for="vid-params">Tool params</label>
+            <input type="text" id="vid-params" placeholder="guidance 7, seed 8842, motion strength medium" data-help="params" />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button class="primary" id="vid-build">Compose Video Prompt</button>
+          <button id="vid-clear">Clear</button>
+          <button id="vid-save-json">Save JSON</button>
+          <label class="pill" for="vid-load-json" style="cursor:pointer">Load JSON<input type="file" id="vid-load-json" accept="application/json" hidden></label>
+        </div>
+
+        <div class="output">
+          <label for="vid-result">Composed Prompt</label>
+          <textarea id="vid-result" readonly></textarea>
+          <div class="actions">
+            <button class="primary" data-copy="#vid-result">Copy</button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <div>Keyboard: <span class="pill">Tab</span> to navigate • <span class="pill">Ctrl/Cmd + Enter</span> to compose</div>
+      <div class="pill">No data leaves this page</div>
+    </footer>
+  </div>
+
+  <script>
+    // --- Utilities ---
+    const $ = (s, r=document)=> r.querySelector(s);
+    const $$ = (s, r=document)=> Array.from(r.querySelectorAll(s));
+    const statusEl = $('#status');
+    function setStatus(msg){ statusEl.textContent = msg; }
+    function copyToClipboard(sel){ const el = $(sel); el.select(); document.execCommand('copy'); setStatus('Copied to clipboard'); }
+    document.addEventListener('click', (e)=>{
+      const t = e.target.closest('[data-copy]');
+      if(!t) return; e.preventDefault(); copyToClipboard(t.getAttribute('data-copy'));
+    });
+
+    // --- Tabs ---
+    const panels = { image: $('#panel-image'), video: $('#panel-video') };
+    function setTab(name){
+      const imageSelected = name==='image';
+      $('#tab-image').setAttribute('aria-selected', imageSelected);
+      $('#tab-video').setAttribute('aria-selected', !imageSelected);
+      panels.image.hidden = !imageSelected;
+      panels.video.hidden = imageSelected;
+      setStatus(name.charAt(0).toUpperCase()+name.slice(1) + ' builder active');
+    }
+    $('#tab-image').addEventListener('click', ()=> setTab('image'));
+    $('#tab-video').addEventListener('click', ()=> setTab('video'));
+
+    // --- Contextual Help Sidebar ---
+    const HELP = {
+      subjects: {
+        title: 'Subjects',
+        tips: [
+          '<b>Who/what</b> and count.',
+          'Pose or emotion: e.g., "mid-leap, alert expression".',
+          'Identity or species if relevant.'
+        ]
+      },
+      action: { title:'Action / State', tips:['Describe the moment. Keep verbs concrete.', 'Optional interaction: with object/person/environment.'] },
+      setting: { title:'Setting', tips:['Location, era, weather, time of day.', 'For studio looks, note "seamless cyclorama".'] },
+      purpose: { title:'Purpose / Audience', tips:['Ad, poster, concept art, product shot.', 'Tone: serious, playful, luxurious, educational.'] },
+      aesthetics: { title:'Aesthetic Tags', tips:['cinematic, editorial, painterly, anime, cyberpunk, minimalism, brutalism, kawaii.', 'Mix 2–4 max to stay coherent.'] },
+      influences: { title:'Influences', tips:['Movements or generic descriptors are safe.', 'Use named artists only with rights.'] },
+      color: { title:'Palette', tips:['Two main colors + one accent.', 'Note saturation/temperature: low-sat cool scene + warm accent.'] },
+      materials: { title:'Materials / Surfaces', tips:['Fabric, metal, glass, skin, foliage, stone, plastic.', 'Finish: matte, gloss, patina.'] },
+      framing: { title:'Framing / Shot', tips:['wide, medium, close-up, macro, aerial, isometric, orthographic.', 'Match subject scale to message.'] },
+      guides: { title:'Composition Guides', tips:['rule of thirds, centered, symmetry, leading lines, golden ratio, negative space.'] },
+      focal_points: { title:'Focal Points', tips:['Name the dominant detail. E.g., "eyes tack-sharp".'] },
+      camera_type: { title:'Camera / Lens', tips:['Camera body and focal length.', 'Specialty lenses: macro, tilt-shift, anamorphic.'] },
+      depth_of_field: { title:'Depth of Field', tips:['Aperture f/x, bokeh shape, focus distance.'] },
+      exposure: { title:'Exposure', tips:['Shutter, ISO, motion blur, grain, film/sensor stock.'] },
+      lighting: { title:'Lighting', tips:['Mood (golden hour, neon, chiaroscuro).', 'Setup (key/fill/rim), direction (back/side/top), Kelvin/gels.'] },
+      background: { title:'Background', tips:['Studio sweep, cyclorama, natural env, matte painting look.'] },
+      atmospherics: { title:'Atmospherics', tips:['Fog, haze, dust, rain, snow, particles.'] },
+      styling: { title:'Styling / Details', tips:['Wardrobe, props, hair, makeup, SFX, tattoos.'] },
+      typography: { title:'On-image Text', tips:['Exact text, placement, alignment, safe margins.', 'Avoid melted or stretched letters.'] },
+      medium: { title:'Medium / Engine', tips:['photo, CGI, watercolor, oil, pixel-art.', 'Engines: Blender/Cycles, Octane, Redshift, Unreal.'] },
+      output: { title:'Output', tips:['Resolution and aspect ratio.', 'Format: PNG, JPEG, EXR.'] },
+      negative: { title:'Negative Constraints', tips:['low-res, artifacts, extra fingers/limbs, watermark, NSFW, logo lookalikes.'] },
+      params: { title:'Tool Params', tips:['Aspect: --ar 1:1 | 3:2 | 16:9.', 'Guidance/CFG 5–9 typical. Steps 20–60. Seed for reproducibility.'] },
+      // video extras
+      duration_fps: { title:'Duration / FPS', tips:['Exact seconds and frame rate.'] },
+      shot_breakdown: { title:'Beat Sheet', tips:['Use timestamps per beat: 00:00–00:03 etc.', 'Describe framing, motion, and action per beat.'] },
+      camera_motion: { title:'Camera Motion', tips:['tripod, handheld, dolly, gimbal, crane, drone, orbit, time-lapse.'] },
+      lens: { title:'Lens / DOF / Shutter', tips:['Focal length(s), aperture, 180° shutter rule ~ 1/(2*fps).'] },
+      on_screen_text: { title:'On-screen Text', tips:['Lower thirds, captions, timing in/out.'] },
+      audio: { title:'Audio Notes', tips:['Music mood, SFX hits, VO timing cues.'] },
+      vfx: { title:'VFX / Compositing', tips:['Particles, simulations, tracking, green screen, style of transitions.'] }
+    };
+
+    // Additional examples appended without removing existing tips
+    const MORE = {
+      subjects: {
+        tips: [
+          'Examples: "one red fox", "two astronauts", "ancient oak", "retro robot".',
+          'Human portraits: note age, ethnicity, and expression when appropriate.'
+        ]
+      },
+      action: { tips: [
+        'Examples: "mid-leap", "pouring tea", "performing surgery", "debugging code at 2am".',
+        'Use a vivid verb + object: "inspects a cracked gemstone".'
+      ]},
+      setting: { tips: [
+        'Examples: "noon market street in Marrakesh", "icy crater on Europa", "studio cyclorama with seamless #111827".'
+      ]},
+      purpose: { tips: [
+        'Examples: "Kickstarter banner", "thumbnail with strong face", "A0 print poster", "toy packaging render".'
+      ]},
+      aesthetics: { tips: [
+        'Combos: "cinematic + grimdark", "editorial + minimalism", "anime + vaporwave".'
+      ]},
+      influences: { tips: [
+        'Safer phrasing: movement or era, e.g., "Italian Futurism", "Dutch Golden Age lighting".'
+      ]},
+      color: { tips: [
+        'Schemes: complementary (teal–orange), analogous (blue–violet), triadic (red–yellow–blue).',
+        'Add contrast intent: high/low; note accent: "crimson accents on neutral base".'
+      ]},
+      materials: { tips: [
+        'PBR cues: albedo, roughness, metallic, subsurface scatter.',
+        'Examples: "brushed aluminum", "oiled walnut", "velvet", "worn leather".'
+      ]},
+      framing: { tips: [
+        'Portraits: headshot, bust, three-quarter, full-body.',
+        'Products: hero angle 30–45°, top-down flatlay, macro detail.'
+      ]},
+      guides: { tips: [
+        'Alternatives: dynamic diagonal, L-composition, frame-within-frame.'
+      ]},
+      focal_points: { tips: [
+        'Examples: "ring gemstone", "character eyes", "product logo".'
+      ]},
+      camera_type: { tips: [
+        'Examples: "medium format look", "35mm film", "IMAX", "anamorphic 2.39:1".'
+      ]},
+      depth_of_field: { tips: [
+        'Deep focus for environments; shallow for portraits; mention bokeh shape if important.'
+      ]},
+      exposure: { tips: [
+        'Motion feel: long shutter for light trails; short for action freeze.',
+        'Film looks: "Kodak Portra 400", "Fuji Provia 100F".'
+      ]},
+      lighting: { tips: [
+        'Setups: Rembrandt, split, clamshell, butterfly.',
+        'Practicals: neon signs, candles, torches; gels: CTB, CTO, Plus/Minus Green.'
+      ]},
+      background: { tips: [
+        'Studio: "sweep #f5f5f5 high-key" or "charcoal #0b0f14 low-key".',
+        'Env: skyline, forest canopy, foggy moor.'
+      ]},
+      atmospherics: { tips: [
+        'Examples: motes, ash, snowfall, rain streaks, fog layers, sandstorm haze.'
+      ]},
+      styling: { tips: [
+        'Wardrobe examples: "linen tunic", "streetwear tech-fabric", "Victorian dress".',
+        'Props: "jeweled dagger", "retro CRT monitor", "alchemist vials".'
+      ]},
+      typography: { tips: [
+        'Specify text content. Example: "Title: SHADOW THIEF, upper-left, bold condensed".'
+      ]},
+      medium: { tips: [
+        '3D engines: Blender/Cycles, Octane, Redshift, Unreal 5 Lumen.',
+        '2D: watercolor, ink wash, linocut, pixel art.'
+      ]},
+      output: { tips: [
+        'Examples: 2048×2048 1:1 PNG; 2560×1440 16:9 PNG; 8k EXR for compositing.'
+      ]},
+      negative: { tips: [
+        'Add safety: no sexualization, no gore, no copyrighted logos or characters.'
+      ]},
+      params: { tips: [
+        'Midjourney: --ar 3:2, --stylize 200; SDXL: CFG 6–8, steps 30–50; Runway: guidance 6–8.'
+      ]},
+      // video
+      duration_fps: { tips: [ 'Short reels: 6–12s; cinematic beats: 12–30s.' ]},
+      shot_breakdown: { tips: [ 'Example: 00:00–00:03 low angle push-in; 00:03–00:06 aerial reveal; 00:06–00:09 close-up detail.' ]},
+      camera_motion: { tips: [ 'Examples: "orbit clockwise 120°", "dolly-zoom/vertigo", "drone crane-down".' ]},
+      lens: { tips: [ 'Examples: 18mm wide establishing; 35mm medium; 85mm portrait compression.' ]},
+      on_screen_text: { tips: [ 'Include font vibe: "serif small caps", "mono UI"; specify safe areas.' ]},
+      audio: { tips: [ 'Mark cues with timestamps: SFX thunder 00:04; musical hit 00:10.' ]},
+      vfx: { tips: [ 'Call out passes: depth map, alpha, motion vectors; sims: particles, smoke, cloth.' ]}
+    };
+
+    // Merge HELP + MORE at runtime without removing anything
+    function mergedHelp(key){
+      const base = HELP[key];
+      const extra = MORE[key];
+      if(!base && !extra) return null;
+      return { title: base?.title || key, tips: [...(base?.tips||[]), ...(extra?.tips||[])] };
+    }
+
+    function showHelp(key){
+      const panel = $('#tips'); panel.innerHTML = '';
+      const meta = mergedHelp(key);
+      $('#help-title').textContent = meta ? meta.title : 'Field guide';
+      if(!meta) return;
+      meta.tips.forEach(t=>{
+        const div = document.createElement('div');
+        div.className = 'tip';
+        div.innerHTML = t;
+        panel.appendChild(div);
+      })
+    }
+    document.addEventListener('focusin', (e)=>{
+      const key = e.target?.dataset?.help; if(!key) return; showHelp(key);
+    });
+
+    // --- JSON helpers ---
+    function serializeImage(){
+      return {
+        intent:{
+          subjects: val('#img-subjects'), action: val('#img-action'), purpose: val('#img-purpose'), audience_tone: ''
+        },
+        style:{ aesthetics: val('#img-aesthetics'), influences: val('#img-influences'), color: val('#img-color'), materials: val('#img-materials') },
+        composition:{ framing: val('#img-framing'), shot_type: '', guides: val('#img-guides'), focal_points: val('#img-focal') },
+        camera:{ camera_type: val('#img-camera'), lens: '', depth_of_field: val('#img-dof'), exposure: val('#img-exposure') },
+        lighting:{ mood: val('#img-lighting'), setup: '', direction: '', color_temperature: '' },
+        environment:{ setting: val('#img-setting'), background: val('#img-background'), atmospherics: val('#img-atmo') },
+        styling:{ wardrobe_props: val('#img-styling'), hair_makeup_fx: '', typography: val('#img-text'), branding_legal: '' },
+        render_tech:{ medium: val('#img-medium'), engine_tools: '', quality: 'high', output: val('#img-output') },
+        negative: val('#img-negative'),
+        params:{ aspect_ratio: '', resolution: '', seed: '', steps_or_cfg: val('#img-params') }
+      };
+    }
+    function serializeVideo(){
+      return {
+        intent:{ subjects: val('#vid-subjects'), action: val('#vid-action'), purpose: val('#vid-purpose'), audience_tone: '' },
+        style:{ aesthetics: val('#vid-aesthetics'), influences: '', color: val('#vid-color'), materials: '' },
+        environment:{ setting: val('#vid-setting'), background: '', atmospherics: '' },
+        video:{ duration_fps: val('#vid-duration'), shot_breakdown: val('#vid-beats'), camera_motion: val('#vid-camera-motion'), subject_motion: val('#vid-performance'), editing_rhythm: '', on_screen_text: val('#vid-text'), audio: val('#vid-audio'), vfx: val('#vid-vfx') },
+        camera:{ lens: val('#vid-lens'), depth_of_field: '', exposure: '', camera_type: 'cinema' },
+        lighting:{ mood: val('#vid-lighting'), setup: '', direction: '', color_temperature: '' },
+        render_tech:{ medium: 'video', output: val('#vid-output') },
+        negative: val('#vid-negative'),
+        params:{ seed: '', steps_or_cfg: val('#vid-params') }
+      };
+    }
+    const val = (sel)=> $(sel).value.trim();
+
+    // --- Composers (skip empties) ---
+    function join(parts){ return parts.filter(Boolean).join(', ').replace(/\s+,/g, ','); }
+    function composeImagePrompt(p){
+      const a=p.intent||{}, s=p.style||{}, c=p.composition||{}, cam=p.camera||{}, l=p.lighting||{}, e=p.environment||{}, r=p.render_tech||{}, par=p.params||{};
+      const lines = [
+        `Subject: ${join([a.subjects, a.action, e.setting])}.`,
+        `Style: ${join([s.aesthetics, s.influences, s.color && `palette ${s.color}`, s.materials && `materials ${s.materials}`])}.`,
+        `Composition: ${join([c.framing, c.shot_type, c.guides, c.focal_points && `focal on ${c.focal_points}`])}.`,
+        `Camera: ${join([cam.camera_type, cam.lens, cam.depth_of_field, cam.exposure])}.`,
+        `Lighting: ${join([l.mood, l.setup, l.direction, l.color_temperature])}.`,
+        `Environment: ${join([e.background, e.atmospherics])}.`,
+        `Medium/Output: ${join([r.medium, r.engine_tools, r.quality, r.output])}.`,
+        p.negative ? `Negative: ${p.negative}.` : '',
+        par ? `Params: ${join([par.aspect_ratio && `--ar ${par.aspect_ratio}`, par.resolution, par.steps_or_cfg, par.seed && `seed ${par.seed}`])}.` : ''
+      ];
+      return lines.filter(Boolean).join('\n');
+    }
+    function composeVideoPrompt(p){
+      const a=p.intent||{}, s=p.style||{}, e=p.environment||{}, v=p.video||{}, cam=p.camera||{}, l=p.lighting||{}, r=p.render_tech||{}, par=p.params||{};
+      const lines = [
+        `Logline: ${[a.subjects, a.action].filter(Boolean).join(' ')}.`,
+        v.duration_fps ? `Duration/FPS: ${v.duration_fps}.` : '',
+        `Visual Style: ${join([s.aesthetics, s.influences, s.color && `palette ${s.color}`])}.`,
+        `Setting: ${join([e.setting, e.background, e.atmospherics])}.`,
+        v.shot_breakdown ? `Beat Sheet: ${v.shot_breakdown}.` : '',
+        `Camera: ${join([v.camera_motion, cam.lens, cam.depth_of_field, cam.exposure, cam.camera_type])}.`,
+        `Lighting: ${join([l.mood, l.setup, l.direction, l.color_temperature])}.`,
+        v.subject_motion ? `Performance: ${v.subject_motion}.` : '',
+        v.vfx ? `VFX/Sim: ${v.vfx}.` : '',
+        v.on_screen_text ? `On-screen Text: ${v.on_screen_text}.` : '',
+        v.audio ? `Audio: ${v.audio}.` : '',
+        r.output ? `Output: ${r.output}.` : '',
+        p.negative ? `Negative: ${p.negative}.` : '',
+        par ? `Params: ${join([par.steps_or_cfg, par.seed && `seed ${par.seed}`])}.` : ''
+      ];
+      return lines.filter(Boolean).join('\n');
+    }
+
+    // --- Builders, Buttons, Hotkeys ---
+    function ensureRequired(type){
+      if(type==='image'){
+        if(!val('#img-subjects') || !val('#img-action')){ setStatus('Image: subjects and action are required'); return false; }
+      }else{
+        if(!val('#vid-subjects') || !val('#vid-action')){ setStatus('Video: subjects and action are required'); return false; }
+      }
+      return true;
+    }
+
+    $('#img-build').addEventListener('click', ()=>{
+      if(!ensureRequired('image')) return;
+      const json = serializeImage();
+      $('#img-result').value = composeImagePrompt(json);
+      setStatus('Image prompt composed');
+    });
+    $('#vid-build').addEventListener('click', ()=>{
+      if(!ensureRequired('video')) return;
+      const json = serializeVideo();
+      $('#vid-result').value = composeVideoPrompt(json);
+      setStatus('Video prompt composed');
+    });
+
+    // Clear
+    $('#img-clear').addEventListener('click', ()=>{ $$('#panel-image input[type="text"], #panel-image textarea').forEach(n=> n.value=''); $('#img-result').value=''; setStatus('Image form cleared'); });
+    $('#vid-clear').addEventListener('click', ()=>{ $$('#panel-video input[type="text"], #panel-video textarea').forEach(n=> n.value=''); $('#vid-result').value=''; setStatus('Video form cleared'); });
+
+    // Save JSON
+    function saveJSON(data, filename){
+      const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+      const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = filename; a.click(); URL.revokeObjectURL(a.href);
+    }
+    $('#img-save-json').addEventListener('click', ()=> saveJSON(serializeImage(), 'image_prompt.json'));
+    $('#vid-save-json').addEventListener('click', ()=> saveJSON(serializeVideo(), 'video_prompt.json'));
+
+    // Load JSON
+    function loadJSON(file, type){
+      const reader = new FileReader();
+      reader.onload = () => {
+        try{
+          const p = JSON.parse(reader.result);
+          if(type==='image'){
+            $('#img-subjects').value = p?.intent?.subjects||'';
+            $('#img-action').value = p?.intent?.action||'';
+            $('#img-setting').value = p?.environment?.setting||'';
+            $('#img-purpose').value = p?.intent?.purpose||'';
+            $('#img-aesthetics').value = p?.style?.aesthetics||'';
+            $('#img-influences').value = p?.style?.influences||'';
+            $('#img-color').value = p?.style?.color||'';
+            $('#img-materials').value = p?.style?.materials||'';
+            $('#img-framing').value = p?.composition?.framing||'';
+            $('#img-guides').value = p?.composition?.guides||'';
+            $('#img-focal').value = p?.composition?.focal_points||'';
+            $('#img-camera').value = p?.camera?.camera_type||'';
+            $('#img-dof').value = p?.camera?.depth_of_field||'';
+            $('#img-exposure').value = p?.camera?.exposure||'';
+            $('#img-lighting').value = p?.lighting?.mood || [p?.lighting?.setup, p?.lighting?.direction, p?.lighting?.color_temperature].filter(Boolean).join(', ');
+            $('#img-background').value = p?.environment?.background||'';
+            $('#img-atmo').value = p?.environment?.atmospherics||'';
+            $('#img-styling').value = p?.styling?.wardrobe_props||'';
+            $('#img-text').value = p?.styling?.typography||'';
+            $('#img-medium').value = p?.render_tech?.medium||'';
+            $('#img-output').value = p?.render_tech?.output||'';
+            $('#img-negative').value = p?.negative||'';
+            $('#img-params').value = [p?.params?.aspect_ratio && `--ar ${p.params.aspect_ratio}`, p?.params?.steps_or_cfg, p?.params?.seed && `seed ${p.params.seed}`].filter(Boolean).join(', ');
+            setStatus('Loaded image JSON');
+          } else {
+            $('#vid-subjects').value = p?.intent?.subjects||'';
+            $('#vid-action').value = p?.intent?.action||'';
+            $('#vid-setting').value = p?.environment?.setting||'';
+            $('#vid-purpose').value = p?.intent?.purpose||'';
+            $('#vid-aesthetics').value = p?.style?.aesthetics||'';
+            $('#vid-color').value = p?.style?.color||'';
+            $('#vid-duration').value = p?.video?.duration_fps||'';
+            $('#vid-beats').value = p?.video?.shot_breakdown||'';
+            $('#vid-camera-motion').value = p?.video?.camera_motion||'';
+            $('#vid-lens').value = p?.camera?.lens||'';
+            $('#vid-lighting').value = p?.lighting?.mood || [p?.lighting?.setup, p?.lighting?.direction, p?.lighting?.color_temperature].filter(Boolean).join(', ');
+            $('#vid-performance').value = p?.video?.subject_motion||'';
+            $('#vid-vfx').value = p?.video?.vfx||'';
+            $('#vid-text').value = p?.video?.on_screen_text||'';
+            $('#vid-audio').value = p?.video?.audio||'';
+            $('#vid-output').value = p?.render_tech?.output||'';
+            $('#vid-negative').value = p?.negative||'';
+            $('#vid-params').value = [p?.params?.steps_or_cfg, p?.params?.seed && `seed ${p.params.seed}`].filter(Boolean).join(', ');
+            setStatus('Loaded video JSON');
+          }
+        }catch(err){ setStatus('Invalid JSON'); }
+      };
+      reader.readAsText(file);
+    }
+    $('#img-load-json').addEventListener('change', (e)=>{ if(e.target.files[0]) loadJSON(e.target.files[0], 'image'); e.target.value=''; });
+    $('#vid-load-json').addEventListener('change', (e)=>{ if(e.target.files[0]) loadJSON(e.target.files[0], 'video'); e.target.value=''; });
+
+    // Hotkeys: Ctrl/Cmd + Enter to compose current tab
+    document.addEventListener('keydown', (e)=>{
+      if((e.ctrlKey||e.metaKey) && e.key==='Enter'){
+        if(!panels.video.hidden) $('#vid-build').click(); else $('#img-build').click();
+      }
+    });
+
+    // Default help
+    showHelp('subjects');
+  </script>
+</body>
+</html>
